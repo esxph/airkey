@@ -7,7 +7,7 @@ enum HandGuidePalette {
 }
 
 /// Real, isolated camera hands underneath the translucent key faces. Use the
-/// same full-scene crop and mirror as the fingertip projection, then clip to the
+/// same inset-camera crop and mirror as the fingertip projection, then clip to the
 /// panel; fitting the video to the panel itself would offset it from the cursor.
 struct CameraGhostView: View {
     @ObservedObject var frames: HandFrameStore

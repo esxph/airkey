@@ -55,6 +55,8 @@ Adjust that path if Xcode is installed elsewhere. Check the selected compiler wi
 2. In AirKey's menu, choose **Enable typing into apps…**. Enable this copy of AirKey in System Settings → Privacy & Security → **Accessibility** (called **Device Control and Data Access** on some macOS versions).
 3. Click an editable field in another app, such as a new TextEdit document. Use AirKey's keys or suggestions. The floating keyboard keeps the destination app focused.
 
+AirKey reads the system-wide keyboard focus before sending input and checks that the focused field belongs to that app. Changing apps or fields clears the previous word context. If focus is unavailable or changes during the check, input pauses rather than using an old destination. The menu shows the current destination or the reason typing is paused.
+
 **If the permission switch is already on but typing fails:** choose **Reveal this app in Finder** to identify the running copy. Remove its stale AirKey entry from the permission list, add this exact `.build/AirKey.app` using the `+` button, and enable it. macOS may require your authentication. Relaunch AirKey if needed, then click the destination field again.
 
 For everyday use, launch the packaged `.app`. `swift run` and the default Swift package Run action in Xcode launch a bare executable without the app bundle's permission configuration. Stop any Xcode debug run before launching the packaged copy.
@@ -84,6 +86,8 @@ Without a suitable certificate it falls back to ad-hoc signing, which is enough 
 | Change settings | Click the menu-bar keyboard icon or right-click the keyboard. |
 
 The Move handle, Space, and Delete attract nearby hits without taking direct hits on letters or suggestions. Window placement is saved. Holding the Move handle suspends typing until you release it.
+
+The keyboard maps into the central 76% of the camera image, leaving at least a 12% tracking margin at each edge. You can reach the outer keys while both fingertips remain inside the frame. The hand hologram and fingertip guides share this mapping, and the circle stays at their midpoint. Camera movement covers more keyboard distance with a constant scale; there is no extra edge acceleration or cursor snapping. During a held window drag, the highlight stays on Move rather than keys underneath the cursor.
 
 Choose **Language → Español / English** and **Pinch effort → Light / Standard / Firm** in the menu. Use Light for missed presses or Firm for accidental presses, then reopen your hand. To switch from a resting hand to that hand typing, move it to aim, open your fingers, and pinch again.
 

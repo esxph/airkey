@@ -208,7 +208,7 @@ final class PersonalLearningTests: XCTestCase {
 final class PersonalLearningIntegrationTests: XCTestCase {
     private let size = CGSize(width: 1100, height: 760)
     private func pinch(_ controller: TypingController, point: CGPoint, time: Double, side: HandSide = .left) {
-        let normalized = CGPoint(x: 1 - point.x / size.width, y: 1 - point.y / size.height)
+        let normalized = CameraProjection(imageSize: size, viewSize: size).unproject(point)
         controller.process(HandFrame(timestamp: time,
             events: [HandEvent(side: side, kind: .began, pointer: normalized, timestamp: time)],
             cursors: [side: normalized], phases: [side: .closed], tracked: [side], pinchScores: [side: 0.2], imageSize: size))
@@ -235,7 +235,7 @@ final class PersonalLearningIntegrationTests: XCTestCase {
         controller.editText("")
         let rect = controller.layout.keyFrames(in: size)["char_H"]!
         let contact = CGPoint(x: rect.minX + 1, y: rect.midY)
-        let normalized = CGPoint(x: 1 - contact.x / size.width, y: 1 - contact.y / size.height)
+        let normalized = CameraProjection(imageSize: size, viewSize: size).unproject(contact)
         let engine = GestureEngine()
         for (index, score) in [CGFloat(0.9), 0.9, 0.55, 0.2].enumerated() {
             let gap: CGFloat = score < 0.4 ? 0.002 : 0.04

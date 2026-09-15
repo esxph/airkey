@@ -90,7 +90,7 @@ final class HandIntentIntegrationTests: XCTestCase {
     private func feed(_ controller: TypingController, time: Double, event: HandSide? = nil) {
         let size = controller.sceneSize
         let rect = controller.layout.keyFrames(in: size)["char_L"]!
-        let point = CGPoint(x: 1 - rect.midX / size.width, y: 1 - rect.midY / size.height)
+        let point = CameraProjection(imageSize: size, viewSize: size).unproject(CGPoint(x: rect.midX, y: rect.midY))
         controller.process(HandFrame(timestamp: time,
             events: event.map { [HandEvent(side: $0, kind: .began, pointer: point, timestamp: time)] } ?? [],
             cursors: [.left: point, .right: point],

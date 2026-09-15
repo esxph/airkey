@@ -21,16 +21,24 @@ struct TextDelta: Equatable {
 @MainActor
 final class SystemTypingDriver: ObservableObject {
     @Published private(set) var status = "Click a text field in another app"
-    @Published private(set) var needsPermission = !AXIsProcessTrusted()
+    @Published private(set) var needsPermission: Bool
     private(set) var hasEditableFocus = false
-    private struct Destination {
-        let pid: pid_t
-        let element: AXUIElement
-        var selection: TextSelection?
-    }
-    private var destination: Destination?
+    enum Output: Equatable { case key(CGKeyCode), text(String) }
+    private let focus: TypingFocusReader
+    private let permissionCheck: () -> Bool
+    private let eventWriter: (Output, pid_t) -> Bool
+    private var destination: TypingDestination?
     private var caret = PostedCaret()
     private var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
+
+    init(focusAccess: TypingFocusAccess = .live,
+         permissionCheck: @escaping () -> Bool = { AXIsProcessTrusted() },
+         eventWriter: ((Output, pid_t) -> Bool)? = nil) {
+        focus = TypingFocusReader(access: focusAccess)
+        self.permissionCheck = permissionCheck
+        self.eventWriter = eventWriter ?? Self.post
+        needsPermission = !permissionCheck()
+    }
 
     func requestPermission() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
@@ -41,7 +49,7 @@ final class SystemTypingDriver: ObservableObject {
     func reset() { destination = nil; caret.reset(to: nil) }
     func refreshStatus() { _ = focusedDestination() }
     @discardableResult func refreshPermission() -> Bool {
-        let trusted = AXIsProcessTrusted()
+        let trusted = permissionCheck()
         if needsPermission == trusted { needsPermission = !trusted }
         if !trusted {
             hasEditableFocus = false
@@ -74,25 +82,15 @@ final class SystemTypingDriver: ObservableObject {
         // Do not guess a replacement range in editors that expose no caret.
         guard delta.deleteCount == 0 || selection != nil else { return false }
         for character in old.suffix(delta.deleteCount).reversed() {
-            key(51, pid: target.pid)
+            guard write(.key(51), to: target.pid) else { return false }
             if let current = selection {
                 selection = TextSelection(location: max(0, current.location - String(character).utf16.count))
                 caret.posted(selection!, at: now)
             }
         }
         for character in delta.inserted {
-            if character == "\n" { key(36, pid: target.pid) }
-            else {
-                let units = Array(String(character).utf16)
-                guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
-                  let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else { return false }
-                units.withUnsafeBufferPointer { buffer in
-                    down.keyboardSetUnicodeString(stringLength: units.count, unicodeString: buffer.baseAddress!)
-                    up.keyboardSetUnicodeString(stringLength: units.count, unicodeString: buffer.baseAddress!)
-                }
-                down.flags = []; up.flags = []
-                down.postToPid(target.pid); up.postToPid(target.pid)
-            }
+            let output: Output = character == "\n" ? .key(36) : .text(String(character))
+            guard write(output, to: target.pid) else { return false }
             if let current = selection {
                 selection = TextSelection(location: current.location + String(character).utf16.count)
                 caret.posted(selection!, at: now)
@@ -104,22 +102,40 @@ final class SystemTypingDriver: ObservableObject {
     func deleteCharacter() {
         guard let current = destination, let target = focusedDestination(),
               current.pid == target.pid, CFEqual(current.element, target.element) else { return }
-        key(51, pid: target.pid)
+        guard write(.key(51), to: target.pid) else { return }
         // Empty-context Delete behaves like a hardware key, including hold-repeat.
         // The next new gesture re-reads the actual caret (including Unicode width).
         destination = target
         caret.reset(to: target.selection)
     }
 
-    private func key(_ code: CGKeyCode, pid: pid_t) {
-        for down in [true, false] {
-            let event = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
-            event?.flags = []
-            event?.postToPid(pid)
+    private func write(_ output: Output, to pid: pid_t) -> Bool {
+        guard eventWriter(output, pid) else {
+            status = "Could not send the key. Click the destination text field again."
+            return false
         }
+        return true
     }
 
-    private func verifiedDestination() -> Destination? {
+    private static func post(_ output: Output, pid: pid_t) -> Bool {
+        let code: CGKeyCode
+        switch output { case .key(let value): code = value; case .text: code = 0 }
+        guard let down = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true),
+              let up = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false) else { return false }
+        if case .text(let text) = output {
+            let units = Array(text.utf16)
+            guard !units.isEmpty else { return false }
+            units.withUnsafeBufferPointer { buffer in
+                down.keyboardSetUnicodeString(stringLength: units.count, unicodeString: buffer.baseAddress!)
+                up.keyboardSetUnicodeString(stringLength: units.count, unicodeString: buffer.baseAddress!)
+            }
+        }
+        down.flags = []; up.flags = []
+        down.postToPid(pid); up.postToPid(pid)
+        return true
+    }
+
+    private func verifiedDestination() -> TypingDestination? {
         guard let current = destination else {
             _ = focusedDestination() // retain the specific permission/focus explanation
             return nil
@@ -133,49 +149,18 @@ final class SystemTypingDriver: ObservableObject {
         return focused
     }
 
-    private func focusedDestination() -> Destination? {
+    private func focusedDestination() -> TypingDestination? {
         hasEditableFocus = false
         guard refreshPermission() else { return nil }
-        guard let app = NSWorkspace.shared.frontmostApplication, app.processIdentifier != ProcessInfo.processInfo.processIdentifier else {
-            status = "Click a text field in another app"; return nil
+        switch focus.read() {
+        case .success(let target):
+            let label = "Typing into \(target.appName)"
+            if status != label { status = label }
+            hasEditableFocus = true
+            return target
+        case .failure(let failure):
+            if status != failure.message { status = failure.message }
+            return nil
         }
-        let application = AXUIElementCreateApplication(app.processIdentifier)
-        AXUIElementSetMessagingTimeout(application, 0.05)
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(application, kAXFocusedUIElementAttribute as CFString, &value) == .success,
-              let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-        func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
-            var result: CFTypeRef?
-            guard AXUIElementCopyAttributeValue(element, name as CFString, &result) == .success else { return nil }
-            return result
-        }
-        var element = unsafeDowncast(value, to: AXUIElement.self)
-        for _ in 0..<5 {
-            AXUIElementSetMessagingTimeout(element, 0.05)
-            if attribute(element, kAXSubroleAttribute) as? String == kAXSecureTextFieldSubrole {
-                status = "Secure fields are excluded"; return nil
-            }
-            let role = attribute(element, kAXRoleAttribute) as? String
-            let editable = attribute(element, kAXIsEditableAttribute) as? Bool
-            if editable != false, attribute(element, kAXEnabledAttribute) as? Bool != false,
-               editable == true || [kAXTextFieldRole, kAXTextAreaRole, kAXComboBoxRole].contains(role ?? "") {
-                var selection: TextSelection?
-                if let rangeValue = attribute(element, kAXSelectedTextRangeAttribute), CFGetTypeID(rangeValue) == AXValueGetTypeID() {
-                    var range = CFRange()
-                    if AXValueGetValue(unsafeDowncast(rangeValue, to: AXValue.self), .cfRange, &range), range.location >= 0, range.length >= 0 {
-                        selection = TextSelection(range)
-                    }
-                }
-                let label = "Typing into \(app.localizedName ?? "active app")"
-                if status != label { status = label }
-                hasEditableFocus = true
-                return Destination(pid: app.processIdentifier, element: element, selection: selection)
-            }
-            guard let parent = attribute(element, "AXEditableAncestor") ?? attribute(element, kAXParentAttribute),
-                  CFGetTypeID(parent) == AXUIElementGetTypeID() else { break }
-            element = unsafeDowncast(parent, to: AXUIElement.self)
-        }
-        status = "Click an editable text field in another app"
-        return nil
     }
 }

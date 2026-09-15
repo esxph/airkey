@@ -44,10 +44,13 @@ final class LayoutAndLanguageTests: XCTestCase {
         XCTAssertEqual(layout.suggestionFrames(in: size, count: 0), [])
     }
 
-    func testProjectionMatchesMirroredAspectFillCrop() {
+    func testProjectionMirrorsTheInsetCameraRegionWithoutMovingItsCenter() {
         let projection = CameraProjection(imageSize: CGSize(width: 640, height: 480), viewSize: CGSize(width: 1000, height: 500))
         XCTAssertEqual(projection.project(CGPoint(x: 0.5, y: 0.5)), CGPoint(x: 500, y: 250))
-        XCTAssertEqual(projection.project(CGPoint(x: 0, y: 1)), CGPoint(x: 1000, y: -125))
+        XCTAssertEqual(projection.project(CGPoint(x: 0.88, y: 0.5)).x, 0, accuracy: 0.000001)
+        XCTAssertEqual(projection.project(CGPoint(x: 0.12, y: 0.5)).x, 1000, accuracy: 0.000001)
+        XCTAssertEqual(projection.project(CGPoint(x: 0.12, y: 0.88)).y, -125, accuracy: 0.000001)
+        XCTAssertEqual(projection.imageRect.width, 1000 / 0.76, accuracy: 0.000001)
     }
 
     func testSuggestionDoesNotReplacePreviousWordAfterWhitespaceOrPunctuation() {

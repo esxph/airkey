@@ -162,7 +162,9 @@ final class TypingController: ObservableObject {
                     sessions[side] = press
                 }
             }
-            nextHovered[side] = target(at: point)
+            // A captured window drag does not target the keys it passes over.
+            // Keep its feedback on Move rather than suggesting Delete will fire.
+            nextHovered[side] = sessions[side]?.key == "move_keyboard" ? "move_keyboard" : target(at: point)
         }
         if hovered != nextHovered { hovered = nextHovered }
         for event in frame.events {

@@ -82,7 +82,7 @@ final class SpaceCorrectionTests: XCTestCase {
             let key = letter == " " ? "space" : "char_\(String(letter).uppercased())"
             let rect = frames[key]!
             let side: HandSide = rect.midX < size.width / 2 ? .left : .right
-            positions[side] = CGPoint(x: 1 - rect.midX / size.width, y: 1 - rect.midY / size.height)
+            positions[side] = CameraProjection(imageSize: size, viewSize: size).unproject(CGPoint(x: rect.midX, y: rect.midY))
             // Whole-hand travel aims the midpoint; fingers close around it.
             for pinch: CGFloat in [0.9, 0.9, 0.55, 0.2] {
                 let observations = HandSide.allCases.map { hand -> HandObservation in

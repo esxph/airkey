@@ -10,7 +10,7 @@ final class TypingControllerTests: XCTestCase {
     }
     private func frame(at point: CGPoint, time: Double, side: HandSide = .left,
                        event: HandEvent.Kind? = nil, phase: HandPhase = .closed) -> HandFrame {
-        let normalized = CGPoint(x: 1 - point.x / size.width, y: 1 - point.y / size.height)
+        let normalized = CameraProjection(imageSize: size, viewSize: size).unproject(point)
         return HandFrame(timestamp: time,
                          events: event.map { [HandEvent(side: side, kind: $0, pointer: normalized, timestamp: time)] } ?? [],
                          cursors: [side: normalized], phases: [side: phase], tracked: [side],

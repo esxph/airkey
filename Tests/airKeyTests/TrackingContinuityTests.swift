@@ -90,7 +90,7 @@ final class PointerContinuityTests: XCTestCase {
         let keyboard = TypingController()
         let size = keyboard.sceneSize
         let rect = keyboard.layout.keyFrames(in: size)["char_H"]!
-        var initial = tracked(at: 1, point: CGPoint(x: 1 - rect.midX / size.width, y: 1 - rect.midY / size.height))
+        var initial = tracked(at: 1, point: CameraProjection(imageSize: size, viewSize: size).unproject(CGPoint(x: rect.midX, y: rect.midY)))
         initial.imageSize = size
         keyboard.process(continuity.apply(to: initial))
         let hover = keyboard.hovered
@@ -108,7 +108,7 @@ final class PointerContinuityTests: XCTestCase {
         var continuity = PointerContinuity()
         let size = keyboard.sceneSize
         let rect = keyboard.layout.keyFrames(in: size)["delete"]!
-        let point = CGPoint(x: 1 - rect.midX / size.width, y: 1 - rect.midY / size.height)
+        let point = CameraProjection(imageSize: size, viewSize: size).unproject(CGPoint(x: rect.midX, y: rect.midY))
         var frame = tracked(at: 1, point: point)
         frame.imageSize = size
         frame.phases[.right] = .closed

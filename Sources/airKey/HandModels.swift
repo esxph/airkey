@@ -74,13 +74,17 @@ extension CGPoint {
     }
 }
 
-/// Matches a mirrored AVCaptureVideoPreviewLayer using resizeAspectFill.
+/// Mirrored aspect-fill projection with room for open fingertips beyond every
+/// keyboard edge. The video, guide endpoints, midpoint and hit testing all use
+/// this same affine transform; it never clamps or changes gain near an edge.
 struct CameraProjection {
     let imageSize: CGSize
     let viewSize: CGSize
+    static let trackingInset: CGFloat = 0.12
 
     var imageRect: CGRect {
-        let scale = max(viewSize.width / max(1, imageSize.width), viewSize.height / max(1, imageSize.height))
+        let usableFraction = 1 - 2 * Self.trackingInset
+        let scale = max(viewSize.width / max(1, imageSize.width), viewSize.height / max(1, imageSize.height)) / usableFraction
         let width = imageSize.width * scale
         let height = imageSize.height * scale
         return CGRect(x: (viewSize.width - width) / 2, y: (viewSize.height - height) / 2,
@@ -91,5 +95,11 @@ struct CameraProjection {
         let rect = imageRect
         return CGPoint(x: (1 - normalized.x) * rect.width + rect.minX,
                        y: (1 - normalized.y) * rect.height + rect.minY)
+    }
+
+    func unproject(_ point: CGPoint) -> CGPoint {
+        let rect = imageRect
+        return CGPoint(x: 1 - (point.x - rect.minX) / rect.width,
+                       y: 1 - (point.y - rect.minY) / rect.height)
     }
 }

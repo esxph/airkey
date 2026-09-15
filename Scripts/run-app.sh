@@ -50,8 +50,8 @@ cat > "$app_dir/Contents/Info.plist" <<'PLIST'
 <key>CFBundleIdentifier</key><string>com.oolix.airKey</string>
 <key>CFBundleName</key><string>AirKey</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleVersion</key><string>10</string>
-<key>CFBundleShortVersionString</key><string>0.3.2</string>
+<key>CFBundleVersion</key><string>12</string>
+<key>CFBundleShortVersionString</key><string>0.3.4</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSCameraUsageDescription</key><string>AirKey uses your camera to track hand gestures for typing. Video stays on your Mac.</string>
 <key>NSHighResolutionCapable</key><true/>

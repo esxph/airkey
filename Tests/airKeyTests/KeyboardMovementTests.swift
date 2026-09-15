@@ -36,7 +36,7 @@ final class HandWindowDragTests: XCTestCase {
     private let size = CGSize(width: 1100, height: 444)
     private func frame(_ point: CGPoint, at time: Double, event: HandEvent.Kind? = nil,
                        side: HandSide = .left, phase: HandPhase = .closed) -> HandFrame {
-        let normalized = CGPoint(x: 1 - point.x / size.width, y: 1 - point.y / size.height)
+        let normalized = CameraProjection(imageSize: size, viewSize: size).unproject(point)
         return HandFrame(timestamp: time,
             events: event.map { [HandEvent(side: side, kind: $0, pointer: normalized, timestamp: time)] } ?? [],
             cursors: [side: normalized], phases: [side: phase], tracked: [side],
@@ -71,6 +71,10 @@ final class HandWindowDragTests: XCTestCase {
         keyboard.process(frame(moved, at: 1.1))
         if case .moved(let point) = events.last! { XCTAssertEqual(point.x, moved.x, accuracy: 0.001) }
         else { XCTFail("Expected live drag motion") }
+        let delete = keyboard.layout.keyFrames(in: size)["delete"]!
+        keyboard.process(frame(CGPoint(x: delete.midX, y: delete.midY), at: 1.15))
+        XCTAssertEqual(keyboard.hovered[.left], "move_keyboard", "Passing over Delete while dragging must keep feedback on Move")
+        XCTAssertEqual(keyboard.text, "")
         var peer = frame(moved, at: 1.2)
         let letter = keyboard.layout.keyFrames(in: size)["char_A"]!
         let other = frame(CGPoint(x: letter.midX, y: letter.midY), at: 1.2, event: .began, side: .right)

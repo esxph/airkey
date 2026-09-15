@@ -276,7 +276,7 @@ final class KeyboardAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelega
             let item = NSMenuItem(title: title, action: nil, keyEquivalent: ""); item.submenu = child; menu.addItem(item)
             return child
         }
-        add("AirKey 0.3.2 · \(camera.status)")
+        add("AirKey 0.3.4 · \(camera.status)")
         add(output.status)
         if output.needsPermission { add("Already enabled? Re-add this copy in System Settings.") }
         if !keyboard.message.isEmpty { add(keyboard.message) }
