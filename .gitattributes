@@ -1,0 +1,5 @@
+* text=auto eol=lf
+
+# Generated dictionaries remain available, but do not dominate GitHub code stats.
+Sources/airKey/Resources/en.txt linguist-generated=true
+Sources/airKey/Resources/es.txt linguist-generated=true

@@ -1,0 +1,16 @@
+English and Spanish word-frequency dictionaries (en.txt and es.txt)
+Source: FrequencyWords by Hermit Dave, 2018 OpenSubtitles word lists.
+https://github.com/hermitdave/FrequencyWords
+Revision: 525f9b560de45753a5ea01069454e72e9aa541c6
+Original corpus: https://opus.nlpl.eu/OpenSubtitles2018.php
+
+The source content and these adapted dictionaries are licensed under
+Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+License: https://creativecommons.org/licenses/by-sa/4.0/
+Legal text: https://creativecommons.org/licenses/by-sa/4.0/legalcode
+
+Changes by airKey: lowercased, Unicode NFC normalized, filtered to supported
+letters/apostrophes and 1–24 characters, deduplicated from the 50,000-entry
+source list per language. Original occurrence counts retained.
+Rebuild with Scripts/update-lexicons.py. No endorsement is implied.
+This notice applies to the word-list data, not to the application's source code.
